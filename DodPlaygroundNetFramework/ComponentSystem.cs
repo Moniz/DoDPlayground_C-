@@ -123,9 +123,6 @@ class World
     public class MoveComponent : Component
     {
         public float velx, vely;
-        public WorldBoundsComponent bounds;
-
-        private PositionComponent pos;
 
         public MoveComponent(float minSpeed, float maxSpeed)
         {
@@ -140,40 +137,58 @@ class World
 
         public override void Start()
         {
-            bounds = FindOfType<WorldBoundsComponent>();
-
-            pos = GetGameObject().GetComponent<PositionComponent>();
-        }
-
-        public override void Update(double time, float deltaTime)
-        {
-            // update position based on movement velocity & delta time
-            pos.x += velx * deltaTime;
-            pos.y += vely * deltaTime;
-
-            // check against world bounds; put back onto bounds and mirror the velocity component to "bounce" back
-            if (pos.x < bounds.xMin)
-            {
-                velx = -velx;
-                pos.x = bounds.xMin;
-            }
-            if (pos.x > bounds.xMax)
-            {
-                velx = -velx;
-                pos.x = bounds.xMax;
-            }
-            if (pos.y < bounds.yMin)
-            {
-                vely = -vely;
-                pos.y = bounds.yMin;
-            }
-            if (pos.y > bounds.yMax)
-            {
-                vely = -vely;
-                pos.y = bounds.yMax;
-            }
+            s_MoveSystem.AddObjectToSystem(this);
         }
     }
+
+    public class MoveSystem
+    {
+        private WorldBoundsComponent bounds;
+        private List<PositionComponent> positionList = new List<PositionComponent>();
+        private List<MoveComponent> moveList = new List<MoveComponent>();
+
+        public void AddObjectToSystem(MoveComponent o)
+        {
+            positionList.Add(o.GetGameObject().GetComponent<PositionComponent>());
+            moveList.Add(o);
+        }
+
+        public void UpdateSystem(double time, float deltaTime)
+        {
+            for(int i = 0, n = positionList.Count; i < n; i++)
+            {
+                PositionComponent pos = positionList[i];
+                MoveComponent move = moveList[i];
+
+                // update position based on movement velocity & delta time
+                pos.x += move.velx * deltaTime;
+                pos.y += move.vely * deltaTime;
+
+                // check against world bounds; put back onto bounds and mirror the velocity component to "bounce" back
+                if (pos.x < bounds.xMin)
+                {
+                    move.velx = -move.velx;
+                    pos.x = bounds.xMin;
+                }
+                if (pos.x > bounds.xMax)
+                {
+                    move.velx = -move.velx;
+                    pos.x = bounds.xMax;
+                }
+                if (pos.y < bounds.yMin)
+                {
+                    move.vely = -move.vely;
+                    pos.y = bounds.yMin;
+                }
+                if (pos.y > bounds.yMax)
+                {
+                    move.vely = -move.vely;
+                    pos.y = bounds.yMax;
+                }
+            }
+        }
+    }//MoveSystem
+    public static MoveSystem s_MoveSystem = new MoveSystem();
 
     // When present, tells things that have Avoid component to avoid this object
     public class AvoidThisComponent : Component

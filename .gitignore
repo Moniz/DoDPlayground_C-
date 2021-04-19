@@ -6,3 +6,7 @@ DodPlaygroundNetFramework/bin/Release/DodPlaygroundNetFramework.exe
 *.pdb
 *.exe
 *.cache
+DodPlaygroundNetFramework/bin/Release/DodPlaygroundNetFramework.exe
+*.exe
+DodPlaygroundNetFramework/bin/Release/DodPlaygroundNetFramework.pdb
+DodPlaygroundNetFramework/obj/Release/DodPlaygroundNetFramework.exe
