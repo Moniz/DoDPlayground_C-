@@ -40,7 +40,6 @@ public class Component
     public ComponentType Type => m_Type;
 
     public virtual void Start() { }
-    public virtual void Update(double time, float deltaTime) { }
 
     public GameObject GetGameObject() { return m_GameObject; }
     public void SetGameObject(GameObject go) { m_GameObject = go; }
@@ -96,14 +95,6 @@ public class GameObject
         for (int i = 0, size = m_Components.Count; i < size; i++)
         {
             m_Components[i].Start();
-        }
-    }
-
-    public void Update(double time, float deltaTime)
-    {
-        for (int i = 0, size = m_Components.Count; i < size; i++)
-        {
-            m_Components[i].Update(time, deltaTime);
         }
     }
 } // GameObject

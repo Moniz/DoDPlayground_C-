@@ -10,3 +10,4 @@ DodPlaygroundNetFramework/bin/Release/DodPlaygroundNetFramework.exe
 *.exe
 DodPlaygroundNetFramework/bin/Release/DodPlaygroundNetFramework.pdb
 DodPlaygroundNetFramework/obj/Release/DodPlaygroundNetFramework.exe
+.vs/DodPlaygroundNetFramework/v16/.suo

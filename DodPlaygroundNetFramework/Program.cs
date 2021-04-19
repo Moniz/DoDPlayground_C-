@@ -16,7 +16,7 @@ struct sprite_data_t
 class Program
 {
     static int kMaxSpriteCount = 1100000;
-    static int kObjectCount = 1000000;
+    static int kObjectCount = 1000;
     static int kAvoidCount = 20;
     public static sprite_data_t[] sprite_data = new sprite_data_t[kMaxSpriteCount];
 
@@ -118,8 +118,6 @@ class Program
         for (int i = 0, size = s_Objects.Count; i < size; i++)
         {
             GameObject go = s_Objects[i];
-            // Update all their components
-            go.Update(time, deltaTime);
 
             // For objects that have a Position & Sprite on them: write out
             // their data into destination buffer that will be rendered later on.
