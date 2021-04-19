@@ -16,7 +16,7 @@ struct sprite_data_t
 class Program
 {
     static int kMaxSpriteCount = 1100000;
-    static int kObjectCount = 1000;
+    static int kObjectCount = 1000000;
     static int kAvoidCount = 20;
     public static sprite_data_t[] sprite_data = new sprite_data_t[kMaxSpriteCount];
 
@@ -61,8 +61,7 @@ class Program
             go.AddComponent(move);
 
             // make it avoid the bubble things
-            AvoidComponent avoid = new AvoidComponent();
-            go.AddComponent(avoid);
+            World.s_AvoidanceSystem.AddObjectToSystem(pos);
 
             s_Objects.Add(go);
         }
@@ -91,10 +90,8 @@ class Program
             MoveComponent move = new MoveComponent(0.1f, 0.2f);
             go.AddComponent(move);
 
-            // setup an "avoid this" component
-            AvoidThisComponent avoid = new AvoidThisComponent();
-            avoid.distance = 1.3f;
-            go.AddComponent(avoid);
+            // add to avoidance this as "Avoid This" object
+            World.s_AvoidanceSystem.AddAvoidThisObjectToSystem(pos, 1.3f);
 
             s_Objects.Add(go);
         }

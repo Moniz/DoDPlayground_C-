@@ -21,9 +21,7 @@ public enum ComponentType
     kCompPosition,
     kCompSprite,
     kCompWorldBounds,
-    kCompMove,
-    kCompAvoid,
-    kCompAvoidThis
+    kCompMove
 };
 
 public class Component
@@ -238,54 +236,25 @@ class World
     }//MoveSystem
     public static MoveSystem s_MoveSystem = new MoveSystem();
 
-    // When present, tells things that have Avoid component to avoid this object
-    public class AvoidThisComponent : Component
-    {
-        public AvoidThisComponent() : base(ComponentType.kCompAvoidThis) { }
-        public float distance;
-    }
-
-    // Objects with this component "avoid" objects with AvoidThis component:
-    // - when they get closer to them than Avoid::distance, they bounce back,
-    // - also they take sprite color from the object they just bumped into
-    public class AvoidComponent : Component
-    {
-        public AvoidComponent() : base(ComponentType.kCompAvoid) { }
-        public override void Start()
-        {
-            s_AvoidanceSystem.AddObjectToSystem(this);
-        }
-    }
-
     // "Avoidance system" works out interactions between objects that have AvoidThis and Avoid
     // components. Objects with Avoid component:
     // - when they get closer to AvoidThis than AvoidThis::distance, they bounce back,
     public class AvoidanceSystem
     {
-        private List<float> avoidDistanceList;
-        private List<PositionComponent> avoidPositionList;
+        private List<float> avoidDistanceList = new List<float>();
+        private List<PositionComponent> avoidPositionList = new List<PositionComponent>();
         // objects that avoid: their position components
         private List<PositionComponent> objectList = new List<PositionComponent>();
 
-        void Initialize()
+        public void AddAvoidThisObjectToSystem(PositionComponent pos, float distance)
         {
-            // find all things to be avoided, and fill our arrays that hold
-            var avList = FindAllComponentsOfType<AvoidThisComponent>();
-            int size = avList.Count;
-            avoidDistanceList = new List<float>(size);
-            avoidPositionList = new List<PositionComponent>(size);
-
-            for (int i = 0; i < size; i++)
-            {
-                AvoidThisComponent av = (AvoidThisComponent)avList[i];
-                avoidDistanceList[i] = av.distance;
-                avoidPositionList[i] = av.GetGameObject().GetComponent<PositionComponent>(ComponentType.kCompPosition);
-            }
+            avoidDistanceList.Add(distance);
+            avoidPositionList.Add(pos);
         }
 
-        public void AddObjectToSystem(AvoidComponent av)
+        public void AddObjectToSystem(PositionComponent pos)
         {
-            objectList.Add(av.GetGameObject().GetComponent<PositionComponent>(ComponentType.kCompPosition));
+            objectList.Add(pos);
         }
 
         public static float DistanceSq(PositionComponent a, PositionComponent b)
@@ -335,6 +304,6 @@ class World
             }
         }
     }//AvoidanceSystem
-    static AvoidanceSystem s_AvoidanceSystem = new AvoidanceSystem();
+    public static AvoidanceSystem s_AvoidanceSystem = new AvoidanceSystem();
 
 }
