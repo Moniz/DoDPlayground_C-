@@ -1,0 +1,7 @@
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\bin\Release\DodPlaygroundNetFramework.exe.config
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\bin\Release\DodPlaygroundNetFramework.exe
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\bin\Release\DodPlaygroundNetFramework.pdb
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Release\DodPlaygroundNetFramework.exe
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Release\DodPlaygroundNetFramework.pdb
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Release\DodPlaygroundNetFramework.csprojAssemblyReference.cache
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Release\DodPlaygroundNetFramework.csproj.CoreCompileInputs.cache

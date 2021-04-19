@@ -1,0 +1,6 @@
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Debug\DodPlaygroundNetFramework.csprojAssemblyReference.cache
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\bin\Debug\DodPlaygroundNetFramework.exe.config
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\bin\Debug\DodPlaygroundNetFramework.exe
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\bin\Debug\DodPlaygroundNetFramework.pdb
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Debug\DodPlaygroundNetFramework.exe
+G:\Projects\DodPlayground\C#\DodPlaygroundNetFramework\DodPlaygroundNetFramework\obj\Debug\DodPlaygroundNetFramework.pdb
