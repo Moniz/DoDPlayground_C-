@@ -1,6 +1,7 @@
 ﻿
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using ComponentVector = System.Collections.Generic.List<Component>;
 using GameObjectVector = System.Collections.Generic.List<GameObject>;
@@ -185,24 +186,41 @@ class World
     // - also they take sprite color from the object they just bumped into
     public class AvoidComponent : Component
     {
-        private static ComponentVector avoidList = new ComponentVector();
-        private static ComponentVector avoidPositionList;
-        private PositionComponent myposition;
-
         public override void Start()
         {
-            myposition = GetGameObject().GetComponent<PositionComponent>();
-            // fetch list of objects we'll be avoiding, if we haven't done that yet
-            if (avoidList.Count > 0)
-            {
-                avoidList = FindAllComponentsOfType<AvoidThisComponent>();
-                avoidPositionList = new ComponentVector(avoidList.Count);
+            s_AvoidanceSystem.AddObjectToSystem(this);
+        }
+    }
 
-                for (int i = 0, size = avoidList.Count; i < size; i++)
-                {
-                    avoidPositionList.Add(avoidList[i].GetGameObject().GetComponent<PositionComponent>());
-                }
+    // "Avoidance system" works out interactions between objects that have AvoidThis and Avoid
+    // components. Objects with Avoid component:
+    // - when they get closer to AvoidThis than AvoidThis::distance, they bounce back,
+    public class AvoidanceSystem
+    {
+        private List<float> avoidDistanceList;
+        private List<PositionComponent> avoidPositionList;
+        // objects that avoid: their position components
+        private List<PositionComponent> objectList = new List<PositionComponent>();
+
+        void Initialize()
+        {
+            // find all things to be avoided, and fill our arrays that hold
+            var avList = FindAllComponentsOfType<AvoidThisComponent>();
+            int size = avList.Count;
+            avoidDistanceList = new List<float>(size);
+            avoidPositionList = new List<PositionComponent>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                AvoidThisComponent av = (AvoidThisComponent)avList[i];
+                avoidDistanceList[i] = av.distance;
+                avoidPositionList[i] = av.GetGameObject().GetComponent<PositionComponent>();
             }
+        }
+
+        public void AddObjectToSystem(AvoidComponent av)
+        {
+            objectList.Add(av.GetGameObject().GetComponent<PositionComponent>());
         }
 
         public static float DistanceSq(PositionComponent a, PositionComponent b)
@@ -212,42 +230,46 @@ class World
             return dx * dx + dy * dy;
         }
 
-        void ResolveCollision(float deltaTime)
+        void ResolveCollision(PositionComponent pos, float deltaTime)
         {
-            MoveComponent move = GetGameObject().GetComponent<MoveComponent>();
+            MoveComponent move = pos.GetGameObject().GetComponent<MoveComponent>();
             // flip velocity
             move.velx = -move.velx;
             move.vely = -move.vely;
 
             // move us out of collision, by moving just a tiny bit more than we'd normally move during a frame
-            PositionComponent pos = GetGameObject().GetComponent<PositionComponent>();
             pos.x += move.velx * deltaTime * 1.1f;
             pos.y += move.vely * deltaTime * 1.1f;
         }
 
-        public override void Update(double time, float deltaTime)
+        public void UpdateSystem(double time, float deltaTime)
         {
-            // check each thing in avoid list
-            for (int i = 0, size = avoidList.Count; i < size; i++)
+            int avoidCount = avoidPositionList.Count;
+            // go through all objects
+            for (int i = 0, size = objectList.Count; i < size; i++)
             {
-                AvoidThisComponent av = (AvoidThisComponent)avoidList[i];
+                PositionComponent myPosition = avoidPositionList[i];
 
-                PositionComponent avoidposition = (PositionComponent)avoidPositionList[i];
-                // is our position closer to "thing to avoid" position than the avoid distance?
-                if (DistanceSq(myposition, avoidposition) < av.distance * av.distance)
+                // Check each thing to avoid
+                for (int ia = 0; ia < avoidCount; ia++)
                 {
-                    ResolveCollision(deltaTime);
+                    float avDistance = avoidDistanceList[ia];
+                    PositionComponent avPosition = avoidPositionList[ia];
 
-                    // also make our sprite take the color of the thing we just bumped into
-                    SpriteComponent avoidSprite = av.GetGameObject().GetComponent<SpriteComponent>();
-                    SpriteComponent mySprite = GetGameObject().GetComponent<SpriteComponent>();
-                    mySprite.colorR = avoidSprite.colorR;
-                    mySprite.colorG = avoidSprite.colorG;
-                    mySprite.colorB = avoidSprite.colorB;
+                    if (DistanceSq(myPosition, avPosition) < avDistance * avDistance)
+                    {
+                        ResolveCollision(myPosition, deltaTime);
+
+                        SpriteComponent avoidSprite = avPosition.GetGameObject().GetComponent<SpriteComponent>();
+                        SpriteComponent mySprite = myPosition.GetGameObject().GetComponent<SpriteComponent>();
+                        mySprite.colorR = avoidSprite.colorR;
+                        mySprite.colorG = avoidSprite.colorG;
+                        mySprite.colorB = avoidSprite.colorB;
+                    }
                 }
             }
         }
-    }//AvoidComponent
-
+    }//AvoidanceSystem
+    static AvoidanceSystem s_AvoidanceSystem = new AvoidanceSystem();
 
 }

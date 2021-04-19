@@ -16,7 +16,7 @@ struct sprite_data_t
 class Program
 {
     static int kMaxSpriteCount = 1100000;
-    static int kObjectCount = 1000000;
+    static int kObjectCount = 10000;
     static int kAvoidCount = 20;
     public static sprite_data_t[] sprite_data = new sprite_data_t[kMaxSpriteCount];
 

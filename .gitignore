@@ -3,3 +3,6 @@ DodPlaygroundNetFramework/obj/*
 DodPlaygroundNetFramework/obj/Release/DodPlaygroundNetFramework.exe
 DodPlaygroundNetFramework/obj/Release/DodPlaygroundNetFramework.pdb
 DodPlaygroundNetFramework/bin/Release/DodPlaygroundNetFramework.exe
+*.pdb
+*.exe
+*.cache
