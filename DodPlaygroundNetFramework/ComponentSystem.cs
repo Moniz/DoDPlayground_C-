@@ -185,7 +185,8 @@ class World
     // - also they take sprite color from the object they just bumped into
     public class AvoidComponent : Component
     {
-        public static ComponentVector avoidList = new ComponentVector();
+        private static ComponentVector avoidList = new ComponentVector();
+        private static ComponentVector avoidPositionList;
         private PositionComponent myposition;
 
         public override void Start()
@@ -193,7 +194,15 @@ class World
             myposition = GetGameObject().GetComponent<PositionComponent>();
             // fetch list of objects we'll be avoiding, if we haven't done that yet
             if (avoidList.Count > 0)
+            {
                 avoidList = FindAllComponentsOfType<AvoidThisComponent>();
+                avoidPositionList = new ComponentVector(avoidList.Count);
+
+                for (int i = 0, size = avoidList.Count; i < size; i++)
+                {
+                    avoidPositionList.Add(avoidList[i].GetGameObject().GetComponent<PositionComponent>());
+                }
+            }
         }
 
         public static float DistanceSq(PositionComponent a, PositionComponent b)
@@ -221,10 +230,9 @@ class World
             // check each thing in avoid list
             for (int i = 0, size = avoidList.Count; i < size; i++)
             {
-                var avc = avoidList[i];
-                AvoidThisComponent av = (AvoidThisComponent)avc;
+                AvoidThisComponent av = (AvoidThisComponent)avoidList[i];
 
-                PositionComponent avoidposition = av.GetGameObject().GetComponent<PositionComponent>();
+                PositionComponent avoidposition = (PositionComponent)avoidPositionList[i];
                 // is our position closer to "thing to avoid" position than the avoid distance?
                 if (DistanceSq(myposition, avoidposition) < av.distance * av.distance)
                 {
