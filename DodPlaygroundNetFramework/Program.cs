@@ -126,8 +126,8 @@ class Program
             //
             // Using a smaller global scale "zooms out" the rendering, so to speak.
             float globalScale = 0.05f;
-            PositionComponent pos = go.GetComponent<PositionComponent>();
-            SpriteComponent sprite = go.GetComponent<SpriteComponent>();
+            PositionComponent pos = go.GetComponent<PositionComponent>(ComponentType.kCompPosition);
+            SpriteComponent sprite = go.GetComponent<SpriteComponent>(ComponentType.kCompSprite);
             if (pos != null && sprite != null)
             {
                 sprite_data_t spr = data[objectCount++];

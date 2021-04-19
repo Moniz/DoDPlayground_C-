@@ -13,14 +13,31 @@ public class Utility
     public static float RandomFloat(float from, float to) { return RandomFloat01() * (to - from) + from; }
 }
 
+// C++ dynamic_cast is fairly slow, C#'s is better
+// But let's try rolling our own and see what happens
+// Each component stores an enum for "what type am I?"
+public enum ComponentType
+{
+    kCompPosition,
+    kCompSprite,
+    kCompWorldBounds,
+    kCompMove,
+    kCompAvoid,
+    kCompAvoidThis
+};
+
 public class Component
 {
     private GameObject m_GameObject;
+    private ComponentType m_Type;
 
-    public Component()
+    protected Component(ComponentType type)
     {
         m_GameObject = null;
+        m_Type = type;
     }
+
+    public ComponentType Type => m_Type;
 
     public virtual void Start() { }
     public virtual void Update(double time, float deltaTime) { }
@@ -46,9 +63,23 @@ public class GameObject
     {
         for (int i = 0, size = m_Components.Count; i < size; i++)
         {
-            T c = m_Components[i] as T;
-            if (c != null)
+            if (m_Components[i] is T c )
+            {
                 return c;
+            }
+        }
+        return null;
+    }
+
+    public T GetComponent<T>(ComponentType type) where T : Component
+    {
+        for (int i = 0, size = m_Components.Count; i < size; i++)
+        {
+            Component c = m_Components[i];
+            if (c.Type == type)
+            {
+                return (T)c;
+            }
         }
         return null;
     }
@@ -92,6 +123,18 @@ class World
         return res;
     }
 
+    public static ComponentVector FindAllComponentsOfType<T>(ComponentType type) where T : Component
+    {
+        ComponentVector res = new ComponentVector();
+        for (int i = 0, size = s_Objects.Count; i < size; i++)
+        {
+            T c = s_Objects[i].GetComponent<T>(type);
+            if (c != null)
+                res.Add(c);
+        }
+        return res;
+    }
+
     public static T FindOfType<T>() where T : Component
     {
         for (int i = 0; i < s_Objects.Count; i++)
@@ -103,13 +146,26 @@ class World
         return null;
     }
 
+    public static T FindOfType<T>(ComponentType type) where T : Component
+    {
+        for (int i = 0; i < s_Objects.Count; i++)
+        {
+            T c = s_Objects[i].GetComponent<T>(type);
+            if (c != null)
+                return c;
+        }
+        return null;
+    }
+
     public class PositionComponent : Component
     {
+        public PositionComponent() : base(ComponentType.kCompPosition) { }
         public float x, y;
     }
 
     public class SpriteComponent : Component
     {
+        public SpriteComponent() : base(ComponentType.kCompSprite) { }
         public float colorR, colorG, colorB;
         public int spriteIndex;
         public float scale;
@@ -117,6 +173,7 @@ class World
 
     public class WorldBoundsComponent : Component
     {
+        public WorldBoundsComponent() : base(ComponentType.kCompWorldBounds) { }
         public float xMin, xMax, yMin, yMax;
     }
 
@@ -124,7 +181,7 @@ class World
     {
         public float velx, vely;
 
-        public MoveComponent(float minSpeed, float maxSpeed)
+        public MoveComponent(float minSpeed, float maxSpeed) : base(ComponentType.kCompMove)
         {
             // random angle
             float angle = Utility.RandomFloat01() * 3.1415926f * 2;
@@ -149,7 +206,7 @@ class World
 
         public void AddObjectToSystem(MoveComponent o)
         {
-            positionList.Add(o.GetGameObject().GetComponent<PositionComponent>());
+            positionList.Add(o.GetGameObject().GetComponent<PositionComponent>(ComponentType.kCompPosition));
             moveList.Add(o);
         }
 
@@ -193,6 +250,7 @@ class World
     // When present, tells things that have Avoid component to avoid this object
     public class AvoidThisComponent : Component
     {
+        public AvoidThisComponent() : base(ComponentType.kCompAvoidThis) { }
         public float distance;
     }
 
@@ -201,6 +259,7 @@ class World
     // - also they take sprite color from the object they just bumped into
     public class AvoidComponent : Component
     {
+        public AvoidComponent() : base(ComponentType.kCompAvoid) { }
         public override void Start()
         {
             s_AvoidanceSystem.AddObjectToSystem(this);
@@ -229,13 +288,13 @@ class World
             {
                 AvoidThisComponent av = (AvoidThisComponent)avList[i];
                 avoidDistanceList[i] = av.distance;
-                avoidPositionList[i] = av.GetGameObject().GetComponent<PositionComponent>();
+                avoidPositionList[i] = av.GetGameObject().GetComponent<PositionComponent>(ComponentType.kCompPosition);
             }
         }
 
         public void AddObjectToSystem(AvoidComponent av)
         {
-            objectList.Add(av.GetGameObject().GetComponent<PositionComponent>());
+            objectList.Add(av.GetGameObject().GetComponent<PositionComponent>(ComponentType.kCompPosition));
         }
 
         public static float DistanceSq(PositionComponent a, PositionComponent b)
@@ -247,7 +306,7 @@ class World
 
         void ResolveCollision(PositionComponent pos, float deltaTime)
         {
-            MoveComponent move = pos.GetGameObject().GetComponent<MoveComponent>();
+            MoveComponent move = pos.GetGameObject().GetComponent<MoveComponent>(ComponentType.kCompMove);
             // flip velocity
             move.velx = -move.velx;
             move.vely = -move.vely;
@@ -275,8 +334,8 @@ class World
                     {
                         ResolveCollision(myPosition, deltaTime);
 
-                        SpriteComponent avoidSprite = avPosition.GetGameObject().GetComponent<SpriteComponent>();
-                        SpriteComponent mySprite = myPosition.GetGameObject().GetComponent<SpriteComponent>();
+                        SpriteComponent avoidSprite = avPosition.GetGameObject().GetComponent<SpriteComponent>(ComponentType.kCompSprite);
+                        SpriteComponent mySprite = myPosition.GetGameObject().GetComponent<SpriteComponent>(ComponentType.kCompSprite);
                         mySprite.colorR = avoidSprite.colorR;
                         mySprite.colorG = avoidSprite.colorG;
                         mySprite.colorB = avoidSprite.colorB;
