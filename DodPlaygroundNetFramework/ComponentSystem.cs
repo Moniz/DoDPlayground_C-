@@ -1,10 +1,7 @@
-﻿
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using ComponentVector = System.Collections.Generic.List<Component>;
-using GameObjectVector = System.Collections.Generic.List<GameObject>;
+using GameObjectVector = System.Collections.Generic.List<World.GameObject>;
 
 public class Utility
 {
@@ -13,164 +10,30 @@ public class Utility
     public static float RandomFloat(float from, float to) { return RandomFloat01() * (to - from) + from; }
 }
 
-// C++ dynamic_cast is fairly slow, C#'s is better
-// But let's try rolling our own and see what happens
-// Each component stores an enum for "what type am I?"
-public enum ComponentType
-{
-    kCompPosition,
-    kCompSprite,
-    kCompWorldBounds,
-    kCompMove
-};
-
-public class Component
-{
-    private GameObject m_GameObject;
-    private ComponentType m_Type;
-
-    protected Component(ComponentType type)
-    {
-        m_GameObject = null;
-        m_Type = type;
-    }
-
-    public ComponentType Type => m_Type;
-
-    public virtual void Start() { }
-
-    public GameObject GetGameObject() { return m_GameObject; }
-    public void SetGameObject(GameObject go) { m_GameObject = go; }
-    public bool HasGameObject() { return m_GameObject != null; }
-
-}
-
-public class GameObject
-{
-    private string m_Name;
-    private ComponentVector m_Components;
-
-    public GameObject(string name)
-    {
-        m_Name = name;
-        m_Components = new ComponentVector();
-    }
-
-    public T GetComponent<T>() where T : Component
-    {
-        for (int i = 0, size = m_Components.Count; i < size; i++)
-        {
-            if (m_Components[i] is T c )
-            {
-                return c;
-            }
-        }
-        return null;
-    }
-
-    public T GetComponent<T>(ComponentType type) where T : Component
-    {
-        for (int i = 0, size = m_Components.Count; i < size; i++)
-        {
-            Component c = m_Components[i];
-            if (c.Type == type)
-            {
-                return (T)c;
-            }
-        }
-        return null;
-    }
-
-    public void AddComponent(Component c)
-    {
-        Debug.Assert(!c.HasGameObject(), "Component has no GameObject");
-        c.SetGameObject(this);
-        m_Components.Add(c);
-    }
-
-    public void Start()
-    {
-        for (int i = 0, size = m_Components.Count; i < size; i++)
-        {
-            m_Components[i].Start();
-        }
-    }
-} // GameObject
-
 class World
 {
-    public static GameObjectVector s_Objects = new GameObjectVector();
-    public static ComponentVector FindAllComponentsOfType<T>() where T : Component
+    // components we use in our "game". these are all just simple structs with some data.
+    public class PositionComponent
     {
-        ComponentVector res = new ComponentVector();
-        for (int i = 0, size = s_Objects.Count; i < size; i++)
-        {
-            T c = s_Objects[i].GetComponent<T>();
-            if (c != null)
-                res.Add(c);
-        }
-        return res;
-    }
-
-    public static ComponentVector FindAllComponentsOfType<T>(ComponentType type) where T : Component
-    {
-        ComponentVector res = new ComponentVector();
-        for (int i = 0, size = s_Objects.Count; i < size; i++)
-        {
-            T c = s_Objects[i].GetComponent<T>(type);
-            if (c != null)
-                res.Add(c);
-        }
-        return res;
-    }
-
-    public static T FindOfType<T>() where T : Component
-    {
-        for (int i = 0; i < s_Objects.Count; i++)
-        {
-            T c = s_Objects[i].GetComponent<T>();
-            if (c != null)
-                return c;
-        }
-        return null;
-    }
-
-    public static T FindOfType<T>(ComponentType type) where T : Component
-    {
-        for (int i = 0; i < s_Objects.Count; i++)
-        {
-            T c = s_Objects[i].GetComponent<T>(type);
-            if (c != null)
-                return c;
-        }
-        return null;
-    }
-
-    public class PositionComponent : Component
-    {
-        public PositionComponent() : base(ComponentType.kCompPosition) { }
         public float x, y;
     }
-
-    public class SpriteComponent : Component
+    public class SpriteComponent
     {
-        public SpriteComponent() : base(ComponentType.kCompSprite) { }
         public float colorR, colorG, colorB;
         public int spriteIndex;
         public float scale;
     }
 
-    public class WorldBoundsComponent : Component
+    public class WorldBoundsComponent
     {
-        public WorldBoundsComponent() : base(ComponentType.kCompWorldBounds) { }
         public float xMin, xMax, yMin, yMax;
     }
 
-    public class MoveComponent : Component
+    public class MoveComponent
     {
         public float velx, vely;
 
-        public MoveComponent(float minSpeed, float maxSpeed) : base(ComponentType.kCompMove)
+        public void Initialize(float minSpeed, float maxSpeed)
         {
             // random angle
             float angle = Utility.RandomFloat01() * 3.1415926f * 2;
@@ -180,31 +43,68 @@ class World
             velx = (float)Math.Cos(angle) * speed;
             vely = (float)Math.Sin(angle) * speed;
         }
+    }
 
-        public override void Start()
+    // super simple "game object system". each object has data for all possible components,
+    // as well as flags indicating which ones are actually present.
+    [Flags]
+    public enum ComponentFlags : byte
+    {
+        kPosition = 0,
+        kSprite = 1 << 0,
+        kWorldBounds = 1 << 1,
+        kMove = 1 << 2
+    }
+
+
+    public struct GameObject
+    {
+        public string m_Name;
+        public PositionComponent m_Position;
+        public SpriteComponent m_Sprite;
+        public WorldBoundsComponent m_WorldBounds;
+        public MoveComponent m_Move;
+        // flags for every component, indicating whether this object "has it"
+        public ComponentFlags m_ComponentFlags;
+
+        public GameObject(string name)
         {
-            s_MoveSystem.AddObjectToSystem(this);
+            m_Name = name;
+            m_ComponentFlags = 0;
+            m_Position = new PositionComponent();
+            m_Sprite = new SpriteComponent();
+            m_WorldBounds = new WorldBoundsComponent();
+            m_Move = new MoveComponent();
         }
     }
 
+    private static GameObjectVector s_Objects = new GameObjectVector();
+    // -------------------------------------------------------------------------------------------------
+    // "systems" that we have; they operate on components of game objects
+
     public class MoveSystem
     {
-        private WorldBoundsComponent bounds;
-        private List<PositionComponent> positionList = new List<PositionComponent>();
-        private List<MoveComponent> moveList = new List<MoveComponent>();
+        int boundsId; // Id of Object with world bounds
+        List<int> entities = new List<int>(); // Ids of objects to move
 
-        public void AddObjectToSystem(MoveComponent o)
+        public void AddObjectToSystem(int entity)
         {
-            positionList.Add(o.GetGameObject().GetComponent<PositionComponent>(ComponentType.kCompPosition));
-            moveList.Add(o);
+            entities.Add(entity);
+        }
+
+        public void SetBounds(int entity)
+        {
+            boundsId = entity;
         }
 
         public void UpdateSystem(double time, float deltaTime)
         {
-            for(int i = 0, n = positionList.Count; i < n; i++)
+            WorldBoundsComponent bounds = S_Objects[boundsId].m_WorldBounds;
+
+            for(int i = 0, n = entities.Count; i < n; i++)
             {
-                PositionComponent pos = positionList[i];
-                MoveComponent move = moveList[i];
+                PositionComponent pos = S_Objects[i].m_Position;
+                MoveComponent move = S_Objects[i].m_Move;
 
                 // update position based on movement velocity & delta time
                 pos.x += move.velx * deltaTime;
@@ -236,25 +136,28 @@ class World
     }//MoveSystem
     public static MoveSystem s_MoveSystem = new MoveSystem();
 
-    // "Avoidance system" works out interactions between objects that have AvoidThis and Avoid
-    // components. Objects with Avoid component:
-    // - when they get closer to AvoidThis than AvoidThis::distance, they bounce back,
+    // "Avoidance system" works out interactions between objects that "avoid" and "should be avoided".
+    // Objects that avoid:
+    // - when they get closer to things that should be avoided than the given distance, they bounce back,
+    // - also they take sprite color from the object they just bumped into
+
     public class AvoidanceSystem
     {
+        // things to be avoided: distances to them, and their IDs
         private List<float> avoidDistanceList = new List<float>();
-        private List<PositionComponent> avoidPositionList = new List<PositionComponent>();
+        private List<int> avoidList = new List<int>();
         // objects that avoid: their position components
-        private List<PositionComponent> objectList = new List<PositionComponent>();
+        private List<int> objectList = new List<int>();
 
-        public void AddAvoidThisObjectToSystem(PositionComponent pos, float distance)
+        public void AddAvoidThisObjectToSystem(int id, float distance)
         {
             avoidDistanceList.Add(distance);
-            avoidPositionList.Add(pos);
+            avoidList.Add(id);
         }
 
-        public void AddObjectToSystem(PositionComponent pos)
+        public void AddObjectToSystem(int id)
         {
-            objectList.Add(pos);
+            objectList.Add(id);
         }
 
         public static float DistanceSq(PositionComponent a, PositionComponent b)
@@ -264,9 +167,10 @@ class World
             return dx * dx + dy * dy;
         }
 
-        void ResolveCollision(PositionComponent pos, float deltaTime)
+        void ResolveCollision(GameObject obj, float deltaTime)
         {
-            MoveComponent move = pos.GetGameObject().GetComponent<MoveComponent>(ComponentType.kCompMove);
+            PositionComponent pos = obj.m_Position;
+            MoveComponent move = obj.m_Move;
             // flip velocity
             move.velx = -move.velx;
             move.vely = -move.vely;
@@ -278,24 +182,26 @@ class World
 
         public void UpdateSystem(double time, float deltaTime)
         {
-            int avoidCount = avoidPositionList.Count;
+            int avoidCount = avoidList.Count;
             // go through all objects
             for (int i = 0, size = objectList.Count; i < size; i++)
             {
-                PositionComponent myPosition = avoidPositionList[i];
+                GameObject obj = S_Objects[avoidList[i]];
+                PositionComponent myPosition = obj.m_Position;
 
                 // Check each thing to avoid
                 for (int ia = 0; ia < avoidCount; ia++)
                 {
                     float avDistance = avoidDistanceList[ia];
-                    PositionComponent avPosition = avoidPositionList[ia];
+                    GameObject objToAvoid = S_Objects[avoidList[ia]];
+                    PositionComponent avPosition = objToAvoid.m_Position;
 
                     if (DistanceSq(myPosition, avPosition) < avDistance * avDistance)
                     {
-                        ResolveCollision(myPosition, deltaTime);
+                        ResolveCollision(objToAvoid, deltaTime);
 
-                        SpriteComponent avoidSprite = avPosition.GetGameObject().GetComponent<SpriteComponent>(ComponentType.kCompSprite);
-                        SpriteComponent mySprite = myPosition.GetGameObject().GetComponent<SpriteComponent>(ComponentType.kCompSprite);
+                        SpriteComponent avoidSprite = objToAvoid.m_Sprite;
+                        SpriteComponent mySprite = obj.m_Sprite;
                         mySprite.colorR = avoidSprite.colorR;
                         mySprite.colorG = avoidSprite.colorG;
                         mySprite.colorB = avoidSprite.colorB;
@@ -306,4 +212,5 @@ class World
     }//AvoidanceSystem
     public static AvoidanceSystem s_AvoidanceSystem = new AvoidanceSystem();
 
+    internal static GameObjectVector S_Objects { get => s_Objects; set => s_Objects = value; }
 }

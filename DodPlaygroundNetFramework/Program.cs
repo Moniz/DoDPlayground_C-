@@ -16,25 +16,28 @@ struct sprite_data_t
 class Program
 {
     static int kMaxSpriteCount = 1100000;
-    static int kObjectCount = 1000000;
+    static int kObjectCount = 10000;
     static int kAvoidCount = 20;
     public static sprite_data_t[] sprite_data = new sprite_data_t[kMaxSpriteCount];
 
     public static void game_initialize()
     {
         // create "world bounds" object
+        WorldBoundsComponent bounds;
         {
             GameObject go = new GameObject("bounds");
-            go.AddComponent(new WorldBoundsComponent
+            go.m_WorldBounds = new WorldBoundsComponent
             {
                 xMin = -80.0f,
                 xMax = 80.0f,
                 yMin = -50.0f,
                 yMax = 50.0f
-            });
-            s_Objects.Add(go);
+            };
+            bounds = go.m_WorldBounds;
+            go.m_ComponentFlags |= ComponentFlags.kWorldBounds;
+            s_MoveSystem.SetBounds(S_Objects.Count);
+            S_Objects.Add(go);
         }
-        WorldBoundsComponent bounds = FindOfType<WorldBoundsComponent>();
 
         // create regular objects that move
         for (int i = 0; i < kObjectCount; ++i)
@@ -42,28 +45,27 @@ class Program
             GameObject go = new GameObject("object");
 
             // position it within world bounds
-            PositionComponent pos = new PositionComponent();
-            pos.x = RandomFloat(bounds.xMin, bounds.xMax);
-            pos.y = RandomFloat(bounds.yMin, bounds.yMax);
-            go.AddComponent(pos);
+            go.m_Position.x = RandomFloat(bounds.xMin, bounds.xMax);
+            go.m_Position.y = RandomFloat(bounds.yMin, bounds.yMax);
+            go.m_ComponentFlags |= ComponentFlags.kPosition;
 
             // setup a sprite for it (random sprite index from first 5), and initial white color
-            SpriteComponent sprite = new SpriteComponent();
-            sprite.colorR = 1.0f;
-            sprite.colorG = 1.0f;
-            sprite.colorB = 1.0f;
-            sprite.spriteIndex = rnd.Next() % 5;
-            sprite.scale = 1.0f;
-            go.AddComponent(sprite);
+            go.m_Sprite.colorR = 1.0f;
+            go.m_Sprite.colorG = 1.0f;
+            go.m_Sprite.colorB = 1.0f;
+            go.m_Sprite.spriteIndex = rnd.Next() % 5;
+            go.m_Sprite.scale = 1.0f;
+            go.m_ComponentFlags |= ComponentFlags.kSprite;
 
             // make it move
-            MoveComponent move = new MoveComponent(0.5f, 0.7f);
-            go.AddComponent(move);
-
+            go.m_Move.Initialize(0.5f, 0.7f);
+            go.m_ComponentFlags |= ComponentFlags.kMove;
+            s_MoveSystem.AddObjectToSystem(S_Objects.Count);
+            
             // make it avoid the bubble things
-            World.s_AvoidanceSystem.AddObjectToSystem(pos);
+            World.s_AvoidanceSystem.AddObjectToSystem(S_Objects.Count);
 
-            s_Objects.Add(go);
+            S_Objects.Add(go);
         }
 
         // create objects that should be avoided
@@ -72,67 +74,57 @@ class Program
             GameObject go = new GameObject("toavoid");
 
             // position it in small area near center of world bounds
-            PositionComponent pos = new PositionComponent();
-            pos.x = RandomFloat(bounds.xMin, bounds.xMax) * 0.2f;
-            pos.y = RandomFloat(bounds.yMin, bounds.yMax) * 0.2f;
-            go.AddComponent(pos);
+            go.m_Position.x = RandomFloat(bounds.xMin, bounds.xMax) * 0.2f;
+            go.m_Position.y = RandomFloat(bounds.yMin, bounds.yMax) * 0.2f;
+            go.m_ComponentFlags |= ComponentFlags.kMove;
 
             // setup a sprite for it (6th one), and a random color
-            SpriteComponent sprite = new SpriteComponent();
-            sprite.colorR = RandomFloat(0.5f, 1.0f);
-            sprite.colorG = RandomFloat(0.5f, 1.0f);
-            sprite.colorB = RandomFloat(0.5f, 1.0f);
-            sprite.spriteIndex = 5;
-            sprite.scale = 2.0f;
-            go.AddComponent(sprite);
+            go.m_Sprite.colorR = RandomFloat(0.5f, 1.0f);
+            go.m_Sprite.colorG = RandomFloat(0.5f, 1.0f);
+            go.m_Sprite.colorB = RandomFloat(0.5f, 1.0f);
+            go.m_Sprite.spriteIndex = 5;
+            go.m_Sprite.scale = 2.0f;
+            go.m_ComponentFlags |= ComponentFlags.kSprite;
 
             // make it move, slowly
-            MoveComponent move = new MoveComponent(0.1f, 0.2f);
-            go.AddComponent(move);
+            go.m_Move.Initialize(0.1f, 0.2f);
+            go.m_ComponentFlags |= ComponentFlags.kMove;
 
             // add to avoidance this as "Avoid This" object
-            World.s_AvoidanceSystem.AddAvoidThisObjectToSystem(pos, 1.3f);
+            World.s_AvoidanceSystem.AddAvoidThisObjectToSystem(S_Objects.Count, 1.3f);
 
-            s_Objects.Add(go);
-        }
-
-        // call Start on all objects/components once they are all created
-        for (int i = 0, size = s_Objects.Count; i < size; i++)
-        {
-            s_Objects[i].Start();
+            S_Objects.Add(go);
         }
     }
 
     public static void game_destroy()
     {
-        s_Objects.Clear();
+        S_Objects.Clear();
     }
 
     public static int game_update(sprite_data_t[] data, double time, float deltaTime)
     {
         int objectCount = 0;
         // go through all objects
-        for (int i = 0, size = s_Objects.Count; i < size; i++)
+        for (int i = 0, size = S_Objects.Count; i < size; i++)
         {
-            GameObject go = s_Objects[i];
+            GameObject go = S_Objects[i];
 
             // For objects that have a Position & Sprite on them: write out
             // their data into destination buffer that will be rendered later on.
             //
             // Using a smaller global scale "zooms out" the rendering, so to speak.
             float globalScale = 0.05f;
-            PositionComponent pos = go.GetComponent<PositionComponent>(ComponentType.kCompPosition);
-            SpriteComponent sprite = go.GetComponent<SpriteComponent>(ComponentType.kCompSprite);
-            if (pos != null && sprite != null)
+            if ((go.m_ComponentFlags & ComponentFlags.kPosition & ComponentFlags.kSprite) != 0)
             {
                 sprite_data_t spr = data[objectCount++];
-                spr.posX = pos.x * globalScale;
-                spr.posY = pos.y * globalScale;
-                spr.scale = sprite.scale * globalScale;
-                spr.colR = sprite.colorR;
-                spr.colG = sprite.colorG;
-                spr.colB = sprite.colorB;
-                spr.sprite = (float)sprite.spriteIndex;
+                spr.posX = go.m_Position.x * globalScale;
+                spr.posY = go.m_Position.y * globalScale;
+                spr.scale = go.m_Sprite.scale * globalScale;
+                spr.colR = go.m_Sprite.colorR;
+                spr.colG = go.m_Sprite.colorG;
+                spr.colB = go.m_Sprite.colorB;
+                spr.sprite = (float)go.m_Sprite.spriteIndex;
             }
         }
         return objectCount;
